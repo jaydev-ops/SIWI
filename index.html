@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/assets/images/siwi-emblem.svg" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/assets/images/favicon-64.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/assets/images/siwi-logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Primary Meta Tags -->
+    <title>SIWI Global Ventures — International Trade &amp; Agricultural Export</title>
+    <meta name="title" content="SIWI Global Ventures — International Trade &amp; Agricultural Export" />
+    <meta name="description" content="SIWI Global Ventures connects quality Indian dehydrated vegetable products and traded goods with international markets through dependable trade partnerships. Based in Mumbai, India." />
+    
+    <!-- Google Fonts: DM Serif Display & Playfair Display (Editorial Headlines) + DM Sans (Body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Immediate system theme synchronization to prevent flash of wrong theme -->
+    <script>
+      (function() {
+        try {
+          localStorage.removeItem('siwi_theme');
+          var m = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+          if (m && m.matches) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-brand-ivoryLight text-brand-ink dark:bg-brand-ink dark:text-brand-ivory selection:bg-brand-gold selection:text-brand-ink transition-colors duration-200 antialiased font-sans">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

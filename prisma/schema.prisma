@@ -1,0 +1,257 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  CONTENT_EDITOR
+  ENQUIRY_MANAGER
+  VIEWER
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EnquiryStatus {
+  NEW
+  REVIEWED
+  IN_PROGRESS
+  AWAITING_CUSTOMER
+  CONVERTED
+  CLOSED
+}
+
+enum DocumentType {
+  SPECIFICATION_SHEET
+  CERTIFICATE_OF_ANALYSIS
+  SAFETY_DATA_SHEET
+  QUALITY_CERTIFICATE
+  PRODUCT_BROCHURE
+  PACKAGING_INFORMATION
+  OTHER
+}
+
+model AdminUser {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String      @map("password_hash")
+  firstName    String      @map("first_name")
+  lastName     String      @map("last_name")
+  role         Role        @default(CONTENT_EDITOR)
+  isActive     Boolean     @default(true) @map("is_active")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  createdProducts   Product[]     @relation("ProductCreatedBy")
+  updatedProducts   Product[]     @relation("ProductUpdatedBy")
+  uploadedMedia     MediaAsset[]  @relation("MediaUploadedBy")
+  uploadedDocs      Document[]    @relation("DocumentUploadedBy")
+  auditLogs         AuditLog[]
+  assignedEnquiries Enquiry[]     @relation("EnquiryAssignedTo")
+
+  @@map("admin_users")
+}
+
+model Product {
+  id               String         @id @default(uuid())
+  name             String
+  slug             String         @unique
+  shortDescription String         @map("short_description")
+  description      String?        @db.Text
+  status           ProductStatus  @default(DRAFT)
+  featured         Boolean        @default(false)
+  displayOrder     Int            @default(0) @map("display_order")
+  featuredImage    String?        @map("featured_image")
+  packagingType    String?        @map("packaging_type")
+  availablePackSizes String?      @map("available_pack_sizes")
+  shelfLife        String?        @map("shelf_life")
+  storageConditions String?       @map("storage_conditions")
+  processingInfo   String?        @map("processing_info")
+  industrialApps   String?        @map("industrial_applications")
+  seoTitle         String?        @map("seo_title")
+  seoDescription   String?        @map("seo_description")
+  publishedAt      DateTime?      @map("published_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  createdById      String?        @map("created_by")
+  updatedById      String?        @map("updated_by")
+
+  createdBy        AdminUser?     @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy        AdminUser?     @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+
+  primaryCategoryId String?       @map("primary_category_id")
+  primaryCategory   Category?     @relation("PrimaryCategory", fields: [primaryCategoryId], references: [id])
+  categories        ProductCategory[]
+  images            ProductImage[]
+  specifications    ProductSpecification[]
+  documents         ProductDocument[]
+
+  @@map("products")
+}
+
+model Category {
+  id             String          @id @default(uuid())
+  name           String
+  slug           String          @unique
+  description    String?         @db.Text
+  parentId       String?         @map("parent_id")
+  featuredImage  String?         @map("featured_image")
+  displayOrder   Int             @default(0) @map("display_order")
+  isActive       Boolean         @default(true) @map("is_active")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  parent         Category?       @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children       Category[]      @relation("CategoryHierarchy")
+  primaryProducts Product[]      @relation("PrimaryCategory")
+  products       ProductCategory[]
+
+  @@map("categories")
+}
+
+model ProductCategory {
+  productId   String   @map("product_id")
+  categoryId  String   @map("category_id")
+  isPrimary   Boolean  @default(false) @map("is_primary")
+
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@map("product_categories")
+}
+
+model MediaAsset {
+  id               String         @id @default(uuid())
+  storageKey       String         @unique @map("storage_key")
+  originalFilename String         @map("original_filename")
+  fileName         String?        @map("file_name")
+  title            String?
+  fileUrl          String         @map("file_url")
+  mimeType         String         @map("mime_type")
+  fileSize         Int            @map("file_size")
+  width            Int?
+  height           Int?
+  altText          String?        @map("alt_text")
+  caption          String?
+  createdById      String?        @map("created_by")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  createdBy        AdminUser?     @relation("MediaUploadedBy", fields: [createdById], references: [id])
+  productImages    ProductImage[]
+
+  @@map("media_assets")
+}
+
+model ProductImage {
+  id               String      @id @default(uuid())
+  productId        String      @map("product_id")
+  mediaAssetId     String      @map("media_asset_id")
+  displayOrder     Int         @default(0) @map("display_order")
+  isFeatured       Boolean     @default(false) @map("is_featured")
+  altTextOverride  String?     @map("alt_text_override")
+  captionOverride  String?     @map("caption_override")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  product          Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mediaAsset       MediaAsset  @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+  @@index([mediaAssetId])
+  @@index([productId, isFeatured])
+  @@map("product_images")
+}
+
+model ProductSpecification {
+  id           String      @id @default(uuid())
+  productId    String      @map("product_id")
+  name         String
+  value        String
+  unit         String?
+  displayOrder Int         @default(0) @map("display_order")
+  isPublic     Boolean     @default(true) @map("is_public")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_specifications")
+}
+
+model Document {
+  id             String        @id @default(uuid())
+  title          String
+  documentType   DocumentType  @map("document_type")
+  storageKey     String        @unique @map("storage_key")
+  originalName   String        @map("original_name")
+  fileUrl        String        @map("file_url")
+  mimeType       String        @map("mime_type")
+  fileSize       Int           @map("file_size")
+  isPublic       Boolean       @default(true) @map("is_public")
+  status         ProductStatus @default(PUBLISHED)
+  uploadedById   String?       @map("uploaded_by")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  uploadedBy     AdminUser?    @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+  products       ProductDocument[]
+
+  @@map("documents")
+}
+
+model ProductDocument {
+  productId   String   @map("product_id")
+  documentId  String   @map("document_id")
+
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([productId, documentId])
+  @@map("product_documents")
+}
+
+model Enquiry {
+  id                 String        @id @default(uuid())
+  referenceNo        String        @unique @map("reference_no")
+  fullName           String        @map("full_name")
+  companyName        String        @map("company_name")
+  businessEmail      String        @map("business_email")
+  phoneNumber        String?       @map("phone_number")
+  country            String
+  productOfInterest  String        @map("product_of_interest")
+  estimatedVolume    String?       @map("estimated_volume")
+  preferredPackaging String?       @map("preferred_packaging")
+  destinationPort    String?       @map("destination_port")
+  enquiryDetails     String        @map("enquiry_details") @db.Text
+  status             EnquiryStatus @default(NEW)
+  internalNotes      String?       @map("internal_notes") @db.Text
+  assignedToId       String?       @map("assigned_to")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  assignedTo         AdminUser?    @relation("EnquiryAssignedTo", fields: [assignedToId], references: [id])
+
+  @@map("enquiries")
+}
+
+model AuditLog {
+  id         String    @id @default(uuid())
+  userId     String?   @map("user_id")
+  action     String
+  entityType String    @map("entity_type")
+  entityId   String?   @map("entity_id")
+  details    String?   @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user       AdminUser? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
